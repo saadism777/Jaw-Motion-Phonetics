@@ -3,18 +3,24 @@ import csv
 import datetime
 import math
 import os
+from subprocess import Popen
 import sys
 import time
+from multiprocessing import Process, Queue
+import numpy as np
 import cv2
 import dlib
+import librosa
 import matplotlib.pyplot as plt
-from multiprocessing import Process, Queue
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout,QCheckBox, QDesktopWidget, QPushButton
-
+from PyQt5.QtWidgets import (QApplication, QCheckBox, QDesktopWidget,
+                             QHBoxLayout, QPushButton, QVBoxLayout, QWidget)
+from scipy.io import wavfile
+from moviepy.editor import VideoFileClip
+from scipy import stats
 # Initialize the webcam or video file path
 #path = '..\sample\sample_front.mp4' #video file path or 0 for webcam
 #path = 1
-path = str(sys.argv[2])
+path = str(sys.argv[1])
 if path=='None':
     path = 0
 
@@ -25,13 +31,11 @@ if isinstance(path, int):
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-# initialize face width variable
-face_width_mm = float(sys.argv[1])  
-#face_width_mm = 152
-print(sys.argv[2])
+
+
 # Initialize the variables to toggle the lines
 show_lines = True    
-show_lines_sZy = True
+show_lines_sZy = False
 show_lines_sN_Sn = True
 show_lines_Sn_sPog = True
 show_lines_iC_Left = True
@@ -241,11 +245,29 @@ if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
 #Timestamp Dir
-date_string = datetime.datetime.now().strftime("%d-%m-%Y_%I-%M%p")
+if str(sys.argv[2]) is None:
+    date_string = datetime.datetime.now().strftime("%d-%m-%Y_%I-%M%p")
+else:
+    date_string = str(sys.argv[2])
 timestamp_dir = os.path.join(output_dir, date_string)
 if not os.path.exists(timestamp_dir):
     os.makedirs(timestamp_dir)
 
+# Audio output directory
+audio_output_dir = os.path.join(timestamp_dir, 'audio')
+if not os.path.exists(audio_output_dir):
+    os.makedirs(audio_output_dir)
+
+# Set the audio output path
+#audio_output_path = os.path.join(audio_output_dir, "raw.wav")
+#video = VideoFileClip(path)
+#audio = video.audio
+#audio.write_audiofile(audio_output_path)
+
+#sr, audio_data = wavfile.read(audio_output_path)
+#denoised_audio = librosa.effects.decompose.noise(audio_data, frame_length=2048, hop_length=512)
+#wavfile.write(audio_output_path, sr, denoised_audio)
+    
 # Get the path to the models directory
 models_dir = os.path.join(project_root, '..', 'models')
 
@@ -339,6 +361,10 @@ graph_1 = []
 graph_2 = []
 first_face_position = None
 elapsed_time_real=0
+diameters =[]
+diameter = None
+reference_diameter_mm = 15  # The real-life diameter of the reference object in mm
+conversion_rate = None
 # Initialize point for displaying average of landmark points 22 and 23
 avg_point = None
 fps = 0
@@ -405,6 +431,7 @@ while True:
     box_height = int(height / 14)  # Adjust the fraction as needed
     box_x = width - box_width
     box_y = 0
+    
 
     # draw the black box on the frame
     cv2.rectangle(frame, (box_x, box_y), (width, height), (0, 0, 0), -1)
@@ -432,7 +459,66 @@ while True:
             x1, y1 = landmarks.part(16).x, landmarks.part(16).y
             x2, y2 = landmarks.part(0).x, landmarks.part(0).y
             cv2.line(frame, (x1, y1), (x2, y2), (255, 255, 255), 2)
+        
+        # Get the forehead region based on landmarks
+        forehead_top = landmarks.part(21).y - 50  # Adjust the value as needed
+        forehead_bottom = landmarks.part(19).y  # Adjust the value as needed
+        forehead_left = landmarks.part(19).x  # Adjust the value as needed
+        forehead_right = landmarks.part(24).x  # Adjust the value as needed
+        # Apply Gaussian blur to reduce noise
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        # Extract the forehead region from the grayscale image
+        #forehead_roi = blurred[forehead_top:forehead_bottom, forehead_left:forehead_right]
+        # Create a blank mask with the same size as the image
+        mask = np.zeros_like(gray)
+
+        # Define the ROI using the facial landmarks
+        roi_points = np.array([[(forehead_left, forehead_top),
+                            (forehead_left, forehead_bottom),
+                            (forehead_right, forehead_bottom),
+                            (forehead_right, forehead_top)]], dtype=np.int32)
+
+        # Fill the ROI region in the mask with white
+        cv2.fillPoly(mask, roi_points, 255)
+
+        # Apply the mask to the grayscale image
+        masked_image = cv2.bitwise_and(gray, mask)
+        circles = cv2.HoughCircles(masked_image, cv2.HOUGH_GRADIENT, dp=1, minDist=1000, param1=10, param2=20, minRadius=3, maxRadius=10)
+        # Ensure that circles are detected
+        if circles is not None:
+            # Convert the circle parameters to integers
+            circles = np.round(circles[0, :]).astype(int)
             
+            # Get the first circle
+            (x, y, r) = circles[0]
+            
+            diameter = r*2
+
+             # Add the diameter to the list
+            diameters.append(diameter)
+                    # Calculate the mode diameter
+            if diameters:
+                mode_diameter = stats.mode(diameters).mode[0]
+                conversion_rate = reference_diameter_mm / mode_diameter
+            # Convert circle coordinates to global coordinates
+            #x += forehead_left
+            #y += forehead_top
+            # Calculate the conversion rate (pixels to mm) based on the diameter of the reference object
+            
+            # Draw the circle on the original image
+            cv2.circle(frame, (x, y), r, (0, 255, 0), 2)
+        # Define the forehead region polygon based on landmarks
+        points = []
+        points.append((landmarks.part(19).x, landmarks.part(19).y))  # Adjust the point indices as needed
+        points.append((landmarks.part(24).x, landmarks.part(19).y))  # Adjust the point indices as needed
+        points.append((landmarks.part(24).x, landmarks.part(21).y - 50))  # Adjust the point indices and the y-offset as needed
+        points.append((landmarks.part(19).x, landmarks.part(21).y - 50))  # Adjust the point indices and the y-offset as needed
+            # Convert the list of points to a NumPy array
+        points = np.array(points)
+        
+        # Draw the forehead region polygon on the image
+        cv2.polylines(frame, [points], isClosed=True, color=(0, 255, 0), thickness=1)
+
         #Drawing dotted lines for point pairs
         point_1 = (landmarks.part(1-1).x, landmarks.part(1-1).y)
         point_2 = (landmarks.part(2-1).x, landmarks.part(2-1).y)
@@ -522,100 +608,131 @@ while True:
         # Convert the distances from pixels to cm 
         face_width_px = math.sqrt((landmarks.part(17-1).x - landmarks.part(1-1).x) ** 2 +
                        (landmarks.part(17-1).y - landmarks.part(1-1).y) ** 2)
-        d1_mm = (d1 / face_width_px) * face_width_mm
-        d2_mm = (d2 / face_width_px) * face_width_mm
-        d3_mm = (d3 / face_width_px) * face_width_mm
-        d4_mm = (d4 / face_width_px) * face_width_mm
-
-        d_3_4_mm = (d_3_4 / face_width_px) * face_width_mm
-        d_4_5_mm = (d_4_5 / face_width_px) * face_width_mm
-        d_5_6_mm = (d_5_6 / face_width_px) * face_width_mm
-        d_6_7_mm = (d_6_7 / face_width_px) * face_width_mm
-        d_7_8_mm = (d_7_8 / face_width_px) * face_width_mm
-        d_8_9_mm = (d_8_9 / face_width_px) * face_width_mm
-        d_3_9_sum = d_3_4_mm + d_4_5_mm + d_5_6_mm + d_6_7_mm + d_7_8_mm + d_8_9_mm
         
-        d_9_10mm = (d_9_10 / face_width_px) * face_width_mm
-        d_10_11mm = (d_10_11 / face_width_px) * face_width_mm
-        d_11_12mm = (d_11_12 / face_width_px) * face_width_mm
-        d_12_13mm = (d_12_13 / face_width_px) * face_width_mm
-        d_13_14mm = (d_13_14 / face_width_px) * face_width_mm
-        d_14_15mm = (d_14_15 / face_width_px) * face_width_mm
-        d_9_15_sum = d_9_10mm + d_10_11mm + d_11_12mm + d_12_13mm + d_13_14mm + d_14_15mm
+ 
         
-        if not isinstance(path, int) or recording_status:
-            # Building array for the graph
-            graph_1.append((d1_mm))
-            graph_2.append((d2_mm))
+        # d1_mm = (d1 / face_width_px) * face_width_mm
+        # d2_mm = (d2 / face_width_px) * face_width_mm
+        # d3_mm = (d3 / face_width_px) * face_width_mm
+        # d4_mm = (d4 / face_width_px) * face_width_mm
 
-            #Write the frame number and eucledian distances to the distance CSV file
-            with open(distance_csv_path, mode='a') as distance_file:
-                distance_writer = csv.writer(distance_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                distance_writer.writerow([frame_count,elapsed_time_real,face_width_mm, d1_mm, d2_mm, d3_mm, d4_mm, d_3_9_sum, d_9_15_sum])
-
-        # Display the frame number and fps on the top left side of the frame
-        end_time = datetime.datetime.now()
-        elapsed_time = (end_time - start_time).total_seconds()
-        fps = frame_count / elapsed_time
+        # d_3_4_mm = (d_3_4 / face_width_px) * face_width_mm
+        # d_4_5_mm = (d_4_5 / face_width_px) * face_width_mm
+        # d_5_6_mm = (d_5_6 / face_width_px) * face_width_mm
+        # d_6_7_mm = (d_6_7 / face_width_px) * face_width_mm
+        # d_7_8_mm = (d_7_8 / face_width_px) * face_width_mm
+        # d_8_9_mm = (d_8_9 / face_width_px) * face_width_mm
+        # d_3_9_sum = d_3_4_mm + d_4_5_mm + d_5_6_mm + d_6_7_mm + d_7_8_mm + d_8_9_mm
         
-        #print(fps_real)
-        # Calculate the elapsed time
-        elapsed_time_real = frame_count/ fps_real
+        # d_9_10mm = (d_9_10 / face_width_px) * face_width_mm
+        # d_10_11mm = (d_10_11 / face_width_px) * face_width_mm
+        # d_11_12mm = (d_11_12 / face_width_px) * face_width_mm
+        # d_12_13mm = (d_12_13 / face_width_px) * face_width_mm
+        # d_13_14mm = (d_13_14 / face_width_px) * face_width_mm
+        # d_14_15mm = (d_14_15 / face_width_px) * face_width_mm
+        # d_9_15_sum = d_9_10mm + d_10_11mm + d_11_12mm + d_12_13mm + d_13_14mm + d_14_15mm
         
+        if diameters or circles is not None:
+
+            d1_mm = d1 * conversion_rate
+            d2_mm = d2 * conversion_rate
+            d3_mm = d3 * conversion_rate
+            d4_mm = d4 * conversion_rate
+
+            d_3_4_mm = d_3_4 * conversion_rate
+            d_4_5_mm = d_4_5 * conversion_rate
+            d_5_6_mm = d_5_6 * conversion_rate
+            d_6_7_mm = d_6_7 * conversion_rate
+            d_7_8_mm = d_7_8 * conversion_rate
+            d_8_9_mm = d_8_9 * conversion_rate
+
+            d_3_9_sum = d_3_4_mm + d_4_5_mm + d_5_6_mm + d_6_7_mm + d_7_8_mm + d_8_9_mm
+
+            d_9_10_mm = d_9_10 * conversion_rate
+            d_10_11_mm = d_10_11 * conversion_rate
+            d_11_12_mm = d_11_12 * conversion_rate
+            d_12_13_mm = d_12_13 * conversion_rate
+            d_13_14_mm = d_13_14 * conversion_rate
+            d_14_15_mm = d_14_15 * conversion_rate
+
+            d_9_15_sum = d_9_10_mm + d_10_11_mm + d_11_12_mm + d_12_13_mm + d_13_14_mm + d_14_15_mm
+            face_width_mm = face_width_px * conversion_rate
+            if not isinstance(path, int) or recording_status:
+                # Building array for the graph
+                graph_1.append((d1_mm))
+                graph_2.append((d2_mm))
+
+                #Write the frame number and eucledian distances to the distance CSV file
+                with open(distance_csv_path, mode='a') as distance_file:
+                    distance_writer = csv.writer(distance_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                    distance_writer.writerow([frame_count,elapsed_time_real,face_width_mm, d1_mm, d2_mm, d3_mm, d4_mm, d_3_9_sum, d_9_15_sum])
+
+            # Display the frame number and fps on the top left side of the frame
+            end_time = datetime.datetime.now()
+            elapsed_time = (end_time - start_time).total_seconds()
+            fps = frame_count / elapsed_time
+            
+            #print(fps_real)
+            # Calculate the elapsed time
+            elapsed_time_real = frame_count/ fps_real
+            
+            
+
+            # Display the eucledian distances on the top right side of the frame
+            text0_label="sZy left-sZy right:"
+            text0=f"{face_width_mm:.2f}mm"
+
+            text1=f"{d1_mm:.2f}mm"
+            text1="sN-Sn:"+ text1
+            text1=str(text1)
+
+            text2_label = "Sn-sPog/Gn:"
+            text2_label = str(text2_label)
+            text2=f"{d2_mm:.2f}mm"
+            
+            text3_label = "iC line right:"
+            text3=f"{d3_mm:.2f}mm"
+            text3=text3_label+text3
+            text3 = str(text3)
+
+            text4_label = "iC line left:"
+            text4=f"{d4_mm:.2f}mm"
+            text4=text4_label+text4
+            text4 = str(text4)
+            
+            text5_label= "Ar/Go-sPog/Gn right:"
+            text5= f"{d_3_9_sum:.2f}mm"
+
+            text6_label= "Ar/Go-sPog/Gn left:"
+            text6= f"{d_9_15_sum:.2f}mm"
+
+            
+            # calculate the text size
+            text_scale = 0.6  # Adjust the scale as needed
+            text_thickness = 2
+            text_font = cv2.FONT_HERSHEY_SIMPLEX
+
+            text_width, text_height = cv2.getTextSize(text1, text_font, text_scale, text_thickness)[0]
+
+            # calculate the text positions
+            x_ec = frame.shape[1] - text_width -100  # Adjust the offset as needed
+            y_ec = int(frame.shape[0] * 0.05)  # Adjust the fraction as needed
+
+            # draw the text on the frame
+            #cv2.putText(frame, text0_label, (x_ec, y_ec), text_font, text_scale, (255, 255, 255), text_thickness, cv2.LINE_AA)
+            #cv2.putText(frame, text0, (x_ec, y_ec + int(text_height) + 10), text_font, text_scale, (255, 255, 255), text_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text1, (x_ec, y_ec + int(text_height) * 2 + 20), text_font, text_scale, (255, 0, 0), text_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text2_label, (x_ec, y_ec + int(text_height) * 4 + 40), text_font, text_scale, (0, 125, 255), text_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text2, (x_ec, y_ec + int(text_height) * 5 + 50), text_font, text_scale, (0, 125, 255), text_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text3, (x_ec, y_ec + int(text_height) * 6 + 60), text_font, text_scale, (255, 0, 255), text_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text4, (x_ec, y_ec + int(text_height) * 7 + 70), text_font, text_scale, (0, 255, 125), text_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text5_label, (x_ec, y_ec + int(text_height) * 8 + 90), text_font, text_scale, (255, 255, 0), text_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text5, (x_ec, y_ec + int(text_height) * 9 + 100), text_font, text_scale, (255, 255, 0), text_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text6_label, (x_ec, y_ec + int(text_height) * 10 + 120), text_font, text_scale, (0, 0, 255), text_thickness, cv2.LINE_AA)
+            cv2.putText(frame, text6, (x_ec, y_ec + int(text_height) * 11 + 130), text_font, text_scale, (0, 0, 255), text_thickness, cv2.LINE_AA)
+            cv2.putText(frame, f"Ref_Diameter: {reference_diameter_mm}mm", (x_ec, y_ec + int(text_height) * 12 + 140), text_font, text_scale, (0, 0, 255), text_thickness, cv2.LINE_AA)
+            cv2.putText(frame, f"Diameter: {mode_diameter}px", (x_ec, y_ec + int(text_height) * 13 + 150), text_font, text_scale, (0, 0, 255), text_thickness, cv2.LINE_AA)
         
-
-        # Display the eucledian distances on the top right side of the frame
-        text0_label="sZy left-sZy right:"
-        text0=f"{face_width_mm:.2f}mm"
-
-        text1=f"{d1_mm:.2f}mm"
-        text1="sN-Sn:"+ text1
-        text1=str(text1)
-
-        text2_label = "Sn-sPog/Gn:"
-        text2_label = str(text2_label)
-        text2=f"{d2_mm:.2f}mm"
-        
-        text3_label = "iC line right:"
-        text3=f"{d3_mm:.2f}mm"
-        text3=text3_label+text3
-        text3 = str(text3)
-
-        text4_label = "iC line left:"
-        text4=f"{d4_mm:.2f}mm"
-        text4=text4_label+text4
-        text4 = str(text4)
-        
-        text5_label= "Ar/Go-sPog/Gn right:"
-        text5= f"{d_3_9_sum:.2f}mm"
-
-        text6_label= "Ar/Go-sPog/Gn left:"
-        text6= f"{d_9_15_sum:.2f}mm"
-
-        
-        # calculate the text size
-        text_scale = 0.8  # Adjust the scale as needed
-        text_thickness = 2
-        text_font = cv2.FONT_HERSHEY_SIMPLEX
-
-        text_width, text_height = cv2.getTextSize(text1, text_font, text_scale, text_thickness)[0]
-
-        # calculate the text positions
-        x_ec = frame.shape[1] - text_width - 10  # Adjust the offset as needed
-        y_ec = int(frame.shape[0] * 0.05)  # Adjust the fraction as needed
-
-        # draw the text on the frame
-        cv2.putText(frame, text0_label, (x_ec, y_ec), text_font, text_scale, (255, 255, 255), text_thickness, cv2.LINE_AA)
-        cv2.putText(frame, text0, (x_ec, y_ec + int(text_height) + 10), text_font, text_scale, (255, 255, 255), text_thickness, cv2.LINE_AA)
-        cv2.putText(frame, text1, (x_ec, y_ec + int(text_height) * 2 + 20), text_font, text_scale, (255, 0, 0), text_thickness, cv2.LINE_AA)
-        cv2.putText(frame, text2_label, (x_ec, y_ec + int(text_height) * 4 + 40), text_font, text_scale, (0, 125, 255), text_thickness, cv2.LINE_AA)
-        cv2.putText(frame, text2, (x_ec, y_ec + int(text_height) * 5 + 50), text_font, text_scale, (0, 125, 255), text_thickness, cv2.LINE_AA)
-        cv2.putText(frame, text3, (x_ec, y_ec + int(text_height) * 6 + 60), text_font, text_scale, (255, 0, 255), text_thickness, cv2.LINE_AA)
-        cv2.putText(frame, text4, (x_ec, y_ec + int(text_height) * 7 + 70), text_font, text_scale, (0, 255, 125), text_thickness, cv2.LINE_AA)
-        cv2.putText(frame, text5_label, (x_ec, y_ec + int(text_height) * 8 + 90), text_font, text_scale, (255, 255, 0), text_thickness, cv2.LINE_AA)
-        cv2.putText(frame, text5, (x_ec, y_ec + int(text_height) * 9 + 100), text_font, text_scale, (255, 255, 0), text_thickness, cv2.LINE_AA)
-        cv2.putText(frame, text6_label, (x_ec, y_ec + int(text_height) * 10 + 120), text_font, text_scale, (0, 0, 255), text_thickness, cv2.LINE_AA)
-        cv2.putText(frame, text6, (x_ec, y_ec + int(text_height) * 11 + 130), text_font, text_scale, (0, 0, 255), text_thickness, cv2.LINE_AA)
 
     else:
         # If no faces are detected, reset the first_face_position variable
@@ -654,4 +771,5 @@ graph(graph_1,'Soft tissue over nasion','Subnasale')
 graph(graph_2,'Subnasale','Soft tissue over Poginion')
 out.release()   
 cap.release()
+phonetics = Popen(['python', 'phonetics.py', str(path), str(date_string), str(distance_csv_path)])
 cv2.destroyAllWindows()

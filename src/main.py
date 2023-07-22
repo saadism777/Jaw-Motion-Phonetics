@@ -10,26 +10,27 @@ from PyQt5.QtCore import QTimer, Qt
 
 #Initializign variables
 front_proc = None
-front_face_width = None
+phonetics = None
 front_path = None
-def start_or_stop_processes(start):
-    global front_proc
-    if start:
-        # Start the two subprocesses and return the objects
-        if front_face_width is not None:
-            front_proc = Popen(['python', 'app.py', str(front_face_width), str(front_path)])
-        
-    else:
-        print("Missing values")
+
 
 class MainWindow(QtWidgets.QWidget):
+    def start_or_stop_processes(start):
+        print(default_output_filename)
+        global front_proc
+        if start:
+            # Start the two subprocesses and return the objects
+            front_proc = Popen(['python', 'app.py', str(front_path)])
+            #phonetics = Popen(['python', 'phonetics.py', str(front_path)])
+        else:
+            print("Missing values")
+
     def __init__(self):
         super().__init__()
         self.resize(300, 300)
         self.center()
-        self.setWindowTitle("Jaw  Motion Phonetics")
-        self.label = QtWidgets.QLabel("Enter the front face width value:")
-        self.entry = QtWidgets.QLineEdit()
+        self.setWindowTitle("Dental Loops SnP")
+
         
         self.labelB = QLabel("Select Input File: ")
         self.buttonB = QtWidgets.QPushButton('Browse File')
@@ -38,16 +39,14 @@ class MainWindow(QtWidgets.QWidget):
 
         font = QtGui.QFont()
         font.setPointSize(16)
-        self.label.setAlignment(QtCore.Qt.AlignCenter)
-        self.label.setFont(font)
-        self.button = QtWidgets.QPushButton("OK", clicked=self.get_entry_value)
+
+        self.button = QtWidgets.QPushButton("OK", clicked=self.start_or_stop_processes)
         self.button2 = QtWidgets.QPushButton("Exit", clicked=self.close_app)
      
 
         layout = QVBoxLayout(self)
         
-        layout.addWidget(self.label)
-        layout.addWidget(self.entry)
+
         layout.addWidget(self.labelB)
         layout.addWidget(self.buttonB)
        
@@ -62,10 +61,19 @@ class MainWindow(QtWidgets.QWidget):
     
     def fileSelectedAction(self, filepath):
         # Do something with the filepath
-        global front_path
+        global front_path, default_output_filename
         front_path=filepath
         self.labelB.setText(f"Selected file: {front_path}")
-
+    # Extract the path from the last backslash up to the file extension
+        filename = os.path.basename(filepath)
+        index_of_last_backslash = filename.rfind("\\")
+        index_of_extension = filename.rfind(".")
+        
+        if index_of_last_backslash != -1 and index_of_extension != -1:
+            default_output_filename = filename[index_of_last_backslash + 1:index_of_extension]
+        else:
+            # If there's no backslash or no file extension, set the entire filename as default
+            default_output_filename = filename
  
     def center(self):
         # Get the geometry of the screen
@@ -77,16 +85,7 @@ class MainWindow(QtWidgets.QWidget):
 
         # Move the window to the center of the screen
         self.move(center_x - self.width() // 2, center_y - self.height() // 2)
-    def get_entry_value(self):
-        global front_face_width, side_face_width
-        front_face_width = float(self.entry.text())
-        # Use the face_width value in your application
-        print("The front face width is:", front_face_width)
-       
-        # Launch both apps
-        # Example usage:
-        start_or_stop_processes(True)
-        #self.start_subprocess()
+
     
     def close_app(self):
         # Stop the two subprocesses
