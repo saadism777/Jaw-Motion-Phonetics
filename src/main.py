@@ -20,7 +20,7 @@ class MainWindow(QtWidgets.QWidget):
         global front_proc
         if start:
             # Start the two subprocesses and return the objects
-            front_proc = Popen(['python', 'app.py', str(front_path)])
+            front_proc = Popen(['python', 'app.py', str(front_path), str(default_output_filename)])
             #phonetics = Popen(['python', 'phonetics.py', str(front_path)])
         else:
             print("Missing values")
