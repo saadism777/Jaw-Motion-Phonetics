@@ -1,97 +1,64 @@
 import datetime
-import subprocess
-import torch
-import pandas as pd
-from pydub import AudioSegment
-from pydub.utils import make_chunks
-import whisper
-import pandas as pd
-from pydub import AudioSegment
 import os
+import subprocess
 import sys
-import pandas as pd
+import pylab
+import librosa
+import librosa.display
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import torch
+import whisper
 from halo import Halo
 from moviepy.editor import VideoFileClip
-import numpy as np
+from pydub import AudioSegment
+from pydub.utils import make_chunks
+from sklearn.preprocessing import MinMaxScaler
+import cv2
+import pyaudio
+import wave
+import threading
+phonetics_output_file = None
+graph_output_file = None
+amplitude_output_file = None
+histogram_output_file = None
+spectogram_output = None
 
 def convert_video_to_wav(input_file, output_file):
     video_clip = VideoFileClip(input_file)
     audio_clip = video_clip.audio
     audio_clip.write_audiofile(output_file)
 
+def plot_time_vs_amplitude(audio_file, name):
+    phonetic_output_dir = os.path.join(audio_output_dir, f'{name}')
+    amplitude_output_file = os.path.join(phonetic_output_dir, f'{name}_time_vs_amplitude.png')
+    histogram_output_file = os.path.join(phonetic_output_dir, f'{name}_histogram_of_amplitude.png')
+    audio, sr = librosa.load(audio_file)
+    time = np.arange(0, len(audio)) / sr
 
+    plt.figure(figsize=(10, 4))
+    plt.plot(time, audio)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Amplitude')
+    plt.title(f'Time vs Amplitude for {name} Audio')
+    plt.savefig(amplitude_output_file, dpi=500)
+    plt.close()
 
-# Create a directory to store the trimmed audio files
-path = str(sys.argv[1])
-date_string = str(sys.argv[2])
-data_path = str(sys.argv[3])
-#path = r'C:\Users\saadi\Videos\Sample recordings for SnP 3.7.23\Participant 2 Video recording.mkv'
-#date_string = "20-07-2023_12-44PM"
-#data_path = r'C:\Projects\Dental-Loop-SnP-Speech-and-Phonetic-Pattern-Recognition\outputs\20-07-2023_12-32AM\front_eucledian_distances_20-07-2023_12-44PM.csv'
-phonetics_timestamps= None
+    # Plot amplitude histogram
+    plt.figure(figsize=(6, 4))
+    plt.hist(audio, bins=10, density=True)
+    plt.xlabel('Amplitude')
+    plt.ylabel('Frequency')
+    # Create a range of values with the desired interval (0.01)
+    interval = 0.01
+    x_interval = np.arange(-0.1, 0.1, interval)
 
-# Get the path to the project's root directory
-project_root = os.path.dirname(os.path.abspath(__file__))
-
-# Construct the path to the outputs directory in the project's root directory
-output_dir = os.path.join(project_root, '..' , 'outputs')
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
-
-#Timestamp Dir
-#date_string = datetime.datetime.now().strftime("%d-%m-%Y_%I-%M%p")
-timestamp_dir = os.path.join(output_dir, date_string)
-if not os.path.exists(timestamp_dir):
-    os.makedirs(timestamp_dir)
-
-# Audio output directory
-audio_output_dir = os.path.join(timestamp_dir, 'audio')
-if not os.path.exists(audio_output_dir):
-    os.makedirs(audio_output_dir)
-
-output_file = os.path.join(audio_output_dir, 'raw.wav')
-
-convert_video_to_wav(path, output_file)
-
-distance_csv_path = os.path.join(timestamp_dir, f'front_eucledian_distances_{date_string}.csv')
-
-num_speakers = 2
-language = 'English'
-model_size = 'large'
-
-#if path[-3:] != 'wav':
-#    subprocess.call(['ffmpeg', '-i', path, 'audio/raw.wav', '-y'])
-#    path = 'audio/raw.wav'
-
-# Specify the keywords to search for
-keywords_fricative = ['father', 'found', 'coffee']
-keywords_sibilant = ['sisters', 'saw', 'zebra','zoo']
-keywords_linguodental = [ 'they', 'thought', 'there', 'were']
-keywords_bilabial = [ 'bobby', 'popped','balloon']
-keywords_mixed = ['sixty','61','62','63','64','65','66','67','68','69', 'city', '1', '2', '4', '6', '7', '8', '9']
-
-model = whisper.load_model(model_size)
-
-# Display spinner animation for model.transcribe()
-spinner = Halo(text='Processing', spinner='dots')  # Initialize the spinner
-
-# Your long-running process (example)
-spinner.start()  # Start the spinner animation
-result = model.transcribe(output_file)
-spinner.stop()  # Stop the spinner animation
-
-
-
-segments = result["segments"]
-
-# Convert the JSON data to a pandas DataFrame
-df = pd.DataFrame(segments)
-
-save_csv = os.path.join(audio_output_dir, f'phonetics_{date_string}.csv')
-
-# Save the DataFrame to an CSV file
-df.to_csv(save_csv, index=False)
+    # Set the x-axis limits based on the interval
+    plt.xlim(min(x_interval), max(x_interval))
+    plt.title(f'Amplitude Histogram for {name} Audio')
+    plt.savefig(histogram_output_file, dpi=500)
+    plt.close()
 
 def search(keywords,name):
     phonetic_output_dir = os.path.join(audio_output_dir, f'{name}')
@@ -124,11 +91,33 @@ def search(keywords,name):
         # Output file path
         phonetics_output_file = os.path.join(phonetic_output_dir, f'{name}_Audio.wav')
         phonetics_timestamps = os.path.join(phonetic_output_dir,f'{name}_Timestamps.csv')
+        spectogram_output =  os.path.join(phonetic_output_dir,f'{name}_Spectogram.png')
         # Save the DataFrame to an CSV file
         df2.to_csv(phonetics_timestamps, index=False)
         
         # Export the trimmed audio to a new file
         trimmed_audio.export(phonetics_output_file, format='wav')
+
+        # Load the audio and its sample rate (sr)
+        audio, sr = librosa.load(phonetics_output_file)
+        # Calculate the maximum absolute value in the audio
+        max_val = np.max(np.abs(audio))
+        
+        # Normalize the audio by dividing each sample by the maximum value
+        normalized_audio = audio / max_val
+        S = librosa.feature.melspectrogram(y=normalized_audio, sr=sr)
+
+        librosa.display.specshow(librosa.power_to_db(S, ref=np.max))
+
+        pylab.savefig(spectogram_output, dpi=1200, bbox_inches=None, pad_inches=0)
+
+        # Normalize the pitch
+        #audio_normalized = normalize_pitch(audio, sr ,  target_pitch)
+
+        #create_spectrogram(audio_normalized, sr, spectogram_output)
+        
+        plot_time_vs_amplitude(phonetics_output_file, name)
+
     except FileNotFoundError:
         print(f"Timestamp file {phonetics_timestamps} not found.")
     except pd.errors.EmptyDataError:
@@ -167,6 +156,7 @@ def plot_histogram(name):
             f.write(f"Variance: {sn_sn_variance}\n")
         # Plot a histogram of the specified column values
         data = filtered_data['sN-Sn(mm)']
+        plt.figure()
         plt.hist(data, bins=np.linspace(data.min(), data.max(), 20))
         plt.xlabel(f'sN-Sn(mm) of {name}')
         plt.ylabel('Frequency')
@@ -183,6 +173,77 @@ def plot_histogram(name):
 
 
 
+# Create a directory to store the trimmed audio files
+#path = str(sys.argv[1])
+#date_string = str(sys.argv[2])
+#data_path = str(sys.argv[3])
+path = r'C:\Users\saadi\Videos\Sample recordings for SnP 3.7.23\Participant 1 Recording.mkv'
+date_string = "Participant 1 Recording.mkv"
+data_path = r'C:\Projects\results snp\1\front_eucledian_distances_21-07-2023_02-47PM.csv'
+
+phonetics_timestamps= None
+
+# Get the path to the project's root directory
+project_root = os.path.dirname(os.path.abspath(__file__))
+
+# Construct the path to the outputs directory in the project's root directory
+output_dir = os.path.join(project_root, '..' , 'outputs')
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+#Timestamp Dir
+#date_string = datetime.datetime.now().strftime("%d-%m-%Y_%I-%M%p")
+timestamp_dir = os.path.join(output_dir, date_string)
+if not os.path.exists(timestamp_dir):
+    os.makedirs(timestamp_dir)
+
+# Audio output directory
+audio_output_dir = os.path.join(timestamp_dir, 'audio')
+if not os.path.exists(audio_output_dir):
+    os.makedirs(audio_output_dir)
+
+# Raw audio output directory
+output_file = os.path.join(audio_output_dir, 'raw.wav')
+
+# Convert audio (.wav) from video format
+convert_video_to_wav(path, output_file)
+
+# Euclidean distance file path
+distance_csv_path = os.path.join(timestamp_dir, f'front_eucledian_distances_{date_string}.csv')
+
+# Whisper model size/type among-(tiny.en, small.en, medium.en, large)
+model_size = 'tiny.en'
+
+# Specify the keywords to search for
+keywords_fricative = ['father', 'found', 'coffee']
+keywords_sibilant = ['sisters', 'saw', 'zebra','zoo']
+keywords_linguodental = [ 'they', 'thought', 'there', 'were']
+keywords_bilabial = [ 'bobby', 'popped','balloon']
+keywords_mixed = ['sixty','61','62','63','64','65','66','67','68','69', 'city', '1', '2', '4', '6', '7', '8', '9']
+
+# 
+model = whisper.load_model(model_size)
+
+# Display spinner animation for model.transcribe()
+spinner = Halo(text='Processing', spinner='dots')  # Initialize the spinner
+
+# Your long-running process (example)
+spinner.start()  # Start the spinner animation
+result = model.transcribe(output_file)
+spinner.stop()  # Stop the spinner animation
+
+# segments of all the output files are attached
+segments = result["segments"]
+
+# Convert the JSON data to a pandas DataFrame
+df = pd.DataFrame(segments)
+
+# Saving the output file
+save_csv = os.path.join(audio_output_dir, f'phonetics_{date_string}.csv')
+
+# Save the DataFrame to an CSV file
+df.to_csv(save_csv, index=False)
+
 search(keywords_fricative, "fricative")
 plot_histogram('fricative')
 search(keywords_bilabial, "bilabial")
@@ -191,7 +252,8 @@ search(keywords_sibilant, "sibilant")
 plot_histogram('sibilant')
 search(keywords_linguodental, "linguodental")
 plot_histogram('linguodental')
-search(keywords_mixed, "mixed")  
+search(keywords_mixed, "mixed")
 plot_histogram('mixed')
+print("Done!")
 
-
+front_proc = subprocess.Popen(['python', 'dashboard.py', str(date_string)])

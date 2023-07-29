@@ -11,8 +11,8 @@ from PyQt5.QtCore import QTimer, Qt
 #Initializign variables
 front_proc = None
 phonetics = None
-front_path = None
-
+path = None
+marker_diameter = None
 
 class MainWindow(QtWidgets.QWidget):
     def start_or_stop_processes(start):
@@ -20,33 +20,39 @@ class MainWindow(QtWidgets.QWidget):
         global front_proc
         if start:
             # Start the two subprocesses and return the objects
-            front_proc = Popen(['python', 'app.py', str(front_path), str(default_output_filename)])
-            #phonetics = Popen(['python', 'phonetics.py', str(front_path)])
+            front_proc = Popen(['python', 'face_app.py', str(path), str(default_output_filename), str(marker_diameter)])
+            #phonetics = Popen(['python', 'phonetics.py', str(front_path), str(default_output_filename)])
         else:
             print("Missing values")
 
     def __init__(self):
         super().__init__()
-        self.resize(300, 300)
+        self.resize(300, 100)
         self.center()
         self.setWindowTitle("Dental Loops SnP")
+        try:
+            self.label = QtWidgets.QLabel("Enter the circle diameter value(mm):")
+            self.entry = QtWidgets.QLineEdit()
+            self.entry.setText("15")
 
-        
-        self.labelB = QLabel("Select Input File: ")
-        self.buttonB = QtWidgets.QPushButton('Browse File')
-        self.buttonB.clicked.connect(self.showFileDialog)
+            self.labelB = QLabel("Select Input File: ")
+            self.buttonB = QtWidgets.QPushButton('Browse File')
+            self.buttonB.clicked.connect(self.showFileDialog)
 
-
-        font = QtGui.QFont()
-        font.setPointSize(16)
-
-        self.button = QtWidgets.QPushButton("OK", clicked=self.start_or_stop_processes)
-        self.button2 = QtWidgets.QPushButton("Exit", clicked=self.close_app)
+            font = QtGui.QFont()
+            font.setPointSize(12)
+            self.label.setAlignment(QtCore.Qt.AlignCenter)
+            self.label.setFont(font)
+            self.button = QtWidgets.QPushButton("OK", clicked=self.get_entry_value)
+            self.button2 = QtWidgets.QPushButton("Exit", clicked=self.close_app)
+        except Exception as e:
+            print("Error: " + str(e))
      
 
         layout = QVBoxLayout(self)
         
-
+        layout.addWidget(self.label)
+        layout.addWidget(self.entry)
         layout.addWidget(self.labelB)
         layout.addWidget(self.buttonB)
        
@@ -61,9 +67,9 @@ class MainWindow(QtWidgets.QWidget):
     
     def fileSelectedAction(self, filepath):
         # Do something with the filepath
-        global front_path, default_output_filename
-        front_path=filepath
-        self.labelB.setText(f"Selected file: {front_path}")
+        global path, default_output_filename
+        path=filepath
+        self.labelB.setText(f"Selected file: {path}")
     # Extract the path from the last backslash up to the file extension
         filename = os.path.basename(filepath)
         index_of_last_backslash = filename.rfind("\\")
@@ -95,6 +101,16 @@ class MainWindow(QtWidgets.QWidget):
         timer.timeout.connect(QApplication.quit)
         timer.start(500)
 
+    def get_entry_value(self):
+        global marker_diameter
+        marker_diameter = float(self.entry.text())
+    
+        # Use the face_width value in your application
+        print(f"The marker diameter is: {marker_diameter}mm")
+        # Launch both apps
+        # Example usage:
+        self.start_or_stop_processes(True)
+        #self.start_subprocess()
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
     main_window = MainWindow()
