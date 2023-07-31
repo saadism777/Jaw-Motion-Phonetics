@@ -1,41 +1,42 @@
+#date_string = 'Participant 1 Recording.mkv'
+import datetime
 import sys
 import tkinter as tk
-from tkinter import ttk
-from PIL import Image, ImageTk
-import pygame
+from tkinter import filedialog, ttk
 
-showplayer = False
-#date_string = str(sys.argv[1])
-date_string = 'Participant 1 Recording.mkv'
-import datetime
-import tkinter as tk
-from tkinter import filedialog
+import pygame
+from PIL import Image, ImageTk
 from tkVideoPlayer import TkinterVideo
 
+from keywords import *
 
+# Variables
+showplayer = False
+
+# Getting the name of the output directory from phonetics.py
+date_string = str(sys.argv[1])
+#date_string = 'Participant 7 video recording.mkv'
+
+# Function to update the duration of the video recording
 def update_duration(event):
     """ updates the duration after finding the duration """
     duration = vid_player.video_info()["duration"]
     end_time["text"] = str(datetime.timedelta(seconds=duration))
     progress_slider["to"] = duration
 
-
+# Function to update the scale
 def update_scale(event):
     """ updates the scale value """
     progress_value.set(vid_player.current_duration())
 
-
-
+# Function to load the video file
 def load_video():
     selected_option = dropdown_var.get()
     video_path = f'../outputs/{date_string}/front_recorded_{date_string}.mp4'
-
-    # Show the video player only for 'Fricative' and 'Bilabial' options
     
-    # Show the video player only for 'Fricative' and 'Bilabial' options
+    # Show the video player only for when phonetics available
     vid_player.grid(row=4, column=0, columnspan=4, rowspan=6, padx=10, pady=10)  # Adjust columnspan and rowspan
    
-
     if video_path:
         vid_player.load(video_path)
 
@@ -43,18 +44,18 @@ def load_video():
         play_pause_btn["text"] = "Play"
         progress_value.set(0)
 
-
+# Function for video seek
 def seek(value):
     """ used to seek a specific timeframe """
     vid_player.seek(int(value))
 
-
+# Function for video skip
 def skip(value: int):
     """ skip seconds """
     vid_player.seek(int(progress_slider.get())+value)
     progress_value.set(progress_slider.get() + value)
 
-
+# Function to play and pause the video
 def play_pause():
     """ pauses and plays """
     if vid_player.is_paused():
@@ -65,13 +66,14 @@ def play_pause():
         vid_player.pause()
         play_pause_btn["text"] = "Play"
 
-
+# Function to handle event on video end
 def video_ended(event):
     """ handle video ended """
     progress_slider.set(progress_slider["to"])
     play_pause_btn["text"] = "Play"
     progress_slider.set(0)
 
+# Function to craete collage
 def create_collage(image_paths):
     collage_width = 1000
     collage_height = 800
@@ -119,59 +121,32 @@ def on_seek(event):
             vid_player.seek(seek_position)
         seek_position /= 1000  # Convert to seconds
         pygame.mixer.music.set_pos(seek_position)
-# Define the image paths for "Fricative" and "Sibilant" options
-image_paths = {
-    'Fricative': {
+
+def get_image_paths(phonetic_type):
+    return {
         'images': [
-            f'../outputs/{date_string}/audio/fricative/fricative_Graph.png',
-            f'../outputs/{date_string}/audio/fricative/fricative_histogram_of_amplitude.png',
-            f'../outputs/{date_string}/audio/fricative/fricative_Spectogram.png',
-            f'../outputs/{date_string}/audio/fricative/fricative_time_vs_amplitude.png',
+             f'../outputs/{date_string}/audio/{phonetic_type}/{phonetic_type}_Graph.png',
+             f'../outputs/{date_string}/audio/{phonetic_type}/{phonetic_type}_histogram_of_amplitude.png',
+             f'../outputs/{date_string}/audio/{phonetic_type}/{phonetic_type}_Spectogram.png',
+             f'../outputs/{date_string}/audio/{phonetic_type}/{phonetic_type}_time_vs_amplitude.png',
         ],
-        'audio': f'../outputs/{date_string}/audio/fricative/fricative_Audio.wav',
-    },
-    'Sibilant': {
-        'images': [
-            f'../outputs/{date_string}/audio/sibilant/sibilant_Graph.png',
-            f'../outputs/{date_string}/audio/sibilant/sibilant_histogram_of_amplitude.png',
-            f'../outputs/{date_string}/audio/sibilant/sibilant_Spectogram.png',
-            f'../outputs/{date_string}/audio/sibilant/sibilant_time_vs_amplitude.png',
-        ],
-        'audio': f'../outputs/{date_string}/audio/sibilant/sibilant_Audio.wav',
-    },
-    'Bilabial': {
-    'images': [
-        f'../outputs/{date_string}/audio/bilabial/bilabial_Graph.png',
-        f'../outputs/{date_string}/audio/bilabial/bilabial_histogram_of_amplitude.png',
-        f'../outputs/{date_string}/audio/bilabial/bilabial_Spectogram.png',
-        f'../outputs/{date_string}/audio/bilabial/bilabial_time_vs_amplitude.png',
-    ],
-    'audio': f'../outputs/{date_string}/audio/bilabial/bilabial_Audio.wav',
-    },
-    'Linguodental': {
-    'images': [
-        f'../outputs/{date_string}/audio/linguodental/linguodental_Graph.png',
-        f'../outputs/{date_string}/audio/linguodental/linguodental_histogram_of_amplitude.png',
-        f'../outputs/{date_string}/audio/linguodental/linguodental_Spectogram.png',
-        f'../outputs/{date_string}/audio/linguodental/linguodental_time_vs_amplitude.png',
-    ],
-    'audio': f'../outputs/{date_string}/audio/linguodental/linguodental_Audio.wav',
-    },
-    'Mixed': {
-    'images': [
-        f'../outputs/{date_string}/audio/mixed/mixed_Graph.png',
-        f'../outputs/{date_string}/audio/mixed/mixed_histogram_of_amplitude.png',
-        f'../outputs/{date_string}/audio/mixed/mixed_Spectogram.png',
-        f'../outputs/{date_string}/audio/mixed/mixed_time_vs_amplitude.png',
-    ],
-    'audio': f'../outputs/{date_string}/audio/mixed/mixed_Audio.wav',
-    },
-}
+        'audio': f'../outputs/{date_string}/audio/{phonetic_type}/{phonetic_type}_Audio.wav',
+    }
+
+# Create the dictionary like images_path using a for loop
+image_paths = {}
+for phonetic_type in keywords_dict:
+    image_paths[phonetic_type] = get_image_paths(phonetic_type)
+
 
 # Create the Tkinter root window and maximize it
 root = tk.Tk()
 root.title('Dental Loop SnP Dashboard')
 root.state('zoomed')
+
+# Set the window icon
+icon_path = '..\images\logo.ico'   # Replace with the path to your icon file
+root.iconbitmap(icon_path)
 
 # Create a frame to contain the left-side components (collages and dropdown)
 left_frame = ttk.Frame(root)
@@ -187,8 +162,11 @@ play_button.grid(row=0, column=0, padx=10, pady=10)
 
 # Audio Seek Functionality (seeking)
 seek_bar = ttk.Progressbar(left_frame, orient=tk.HORIZONTAL, length=300, mode='determinate')
-seek_bar.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+#seek_bar.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
 
+# Label for "Processing Phonetics" text
+processing_label = tk.Label(left_frame, text="Select Phoneme Type", font=("Arial", 14))
+processing_label.grid(row=1, column=0)
 
 # Create a dropdown menu for the options "Fricative" and "Sibilant"
 dropdown_var = tk.StringVar()

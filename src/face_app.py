@@ -3,20 +3,22 @@ import csv
 import datetime
 import math
 import os
-from subprocess import Popen
 import sys
 import time
 from multiprocessing import Process, Queue
-import numpy as np
+from subprocess import Popen
+
 import cv2
 import dlib
 import librosa
 import matplotlib.pyplot as plt
+import numpy as np
+from moviepy.editor import VideoFileClip
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QDesktopWidget,
                              QHBoxLayout, QPushButton, QVBoxLayout, QWidget)
-from scipy.io import wavfile
-from moviepy.editor import VideoFileClip
 from scipy import stats
+from scipy.io import wavfile
+
 # Initialize the webcam or video file path
 #path = '..\sample\sample_front.mp4' #video file path or 0 for webcam
 #path = 1
@@ -771,5 +773,6 @@ graph(graph_1,'Soft tissue over nasion','Subnasale')
 graph(graph_2,'Subnasale','Soft tissue over Poginion')
 out.release()   
 cap.release()
-phonetics = Popen(['python', 'phonetics.py', str(path), str(date_string), str(distance_csv_path)])
+#Popen(['python', 'phonetics.py', str(path), str(date_string), str(distance_csv_path)])
+Popen(['python', 'process.py',str(path), str(date_string), str(distance_csv_path)])
 cv2.destroyAllWindows()

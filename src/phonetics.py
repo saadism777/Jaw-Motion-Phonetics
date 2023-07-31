@@ -19,12 +19,21 @@ import cv2
 import pyaudio
 import wave
 import threading
+from keywords import *
+
+# Printing Keywords Dictionary
+print("Keywords Dictionary:")
+for phonetic_type, keywords in keywords_dict.items():
+    print(f"{phonetic_type}: {keywords}")
+
+# Variables Declaration
 phonetics_output_file = None
 graph_output_file = None
 amplitude_output_file = None
 histogram_output_file = None
 spectogram_output = None
 
+# Function to convert video to audio file
 def convert_video_to_wav(input_file, output_file):
     video_clip = VideoFileClip(input_file)
     audio_clip = video_clip.audio
@@ -64,15 +73,15 @@ def search(keywords,name):
     phonetic_output_dir = os.path.join(audio_output_dir, f'{name}')
     if not os.path.exists(phonetic_output_dir):
         os.makedirs(phonetic_output_dir)
-    # Store the timestamps of matching rows
-    timestamps = []
-    # Iterate through the DataFrame rows
-    for index, row in df.iterrows():
-        text = row['text']
-        if any(keyword in text.lower() for keyword in keywords):
-            timestamps.append((row['start'], row['end']))
-    
     try:
+        # Store the timestamps of matching rows
+        timestamps = []
+        # Iterate through the DataFrame rows
+        for index, row in df.iterrows():
+            text = row['text']
+            if any(keyword in text.lower() for keyword in keywords):
+                timestamps.append((row['start'], row['end']))
+
         df2 = pd.DataFrame(timestamps)
         
         # Create a list to store the trimmed audio segments
@@ -174,12 +183,12 @@ def plot_histogram(name):
 
 
 # Create a directory to store the trimmed audio files
-#path = str(sys.argv[1])
-#date_string = str(sys.argv[2])
-#data_path = str(sys.argv[3])
-path = r'C:\Users\saadi\Videos\Sample recordings for SnP 3.7.23\Participant 1 Recording.mkv'
-date_string = "Participant 1 Recording.mkv"
-data_path = r'C:\Projects\results snp\1\front_eucledian_distances_21-07-2023_02-47PM.csv'
+path = str(sys.argv[1])
+date_string = str(sys.argv[2])
+data_path = str(sys.argv[3])
+#path = r'C:\Users\saadi\Videos\Sample recordings for SnP 3.7.23\Participant 1 Recording.mkv'
+#date_string = "Participant 1 Recording.mkv"
+#data_path = r'C:\Projects\results snp\1\front_eucledian_distances_21-07-2023_02-47PM.csv'
 
 phonetics_timestamps= None
 
@@ -215,11 +224,11 @@ distance_csv_path = os.path.join(timestamp_dir, f'front_eucledian_distances_{dat
 model_size = 'tiny.en'
 
 # Specify the keywords to search for
-keywords_fricative = ['father', 'found', 'coffee']
-keywords_sibilant = ['sisters', 'saw', 'zebra','zoo']
-keywords_linguodental = [ 'they', 'thought', 'there', 'were']
-keywords_bilabial = [ 'bobby', 'popped','balloon']
-keywords_mixed = ['sixty','61','62','63','64','65','66','67','68','69', 'city', '1', '2', '4', '6', '7', '8', '9']
+#keywords_fricative = ['father', 'found', 'coffee']
+#keywords_sibilant = ['sisters', 'saw', 'zebra','zoo']
+#keywords_linguodental = [ 'they', 'thought', 'there', 'were']
+#keywords_bilabial = [ 'bobby', 'popped','balloon']
+#keywords_mixed = ['sixty','61','62','63','64','65','66','67','68','69', 'city', '1', '2', '4', '6', '7', '8', '9']
 
 # 
 model = whisper.load_model(model_size)
@@ -244,16 +253,10 @@ save_csv = os.path.join(audio_output_dir, f'phonetics_{date_string}.csv')
 # Save the DataFrame to an CSV file
 df.to_csv(save_csv, index=False)
 
-search(keywords_fricative, "fricative")
-plot_histogram('fricative')
-search(keywords_bilabial, "bilabial")
-plot_histogram('bilabial')
-search(keywords_sibilant, "sibilant")
-plot_histogram('sibilant')
-search(keywords_linguodental, "linguodental")
-plot_histogram('linguodental')
-search(keywords_mixed, "mixed")
-plot_histogram('mixed')
+for phonetic_type, keywords in keywords_dict.items():
+    search(keywords, f"{phonetic_type}")
+    plot_histogram(f"{phonetic_type}")
+
 print("Done!")
 
-front_proc = subprocess.Popen(['python', 'dashboard.py', str(date_string)])
+subprocess.Popen(['python', 'dashboard.py', str(date_string)])
