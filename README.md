@@ -25,7 +25,16 @@ The follwing step by steps procedure will aid in installation of the software. P
 2. Download CMake. [Link](https://cmake.org/download/)
 3. Download Anaconda or Miniconda.
 4. Download ffmpeg from here extract it and add the path of the extracted folder to windows environment variable. [Link](https://ffmpeg.org/download.html)
-5. Open conda prompt and enter the following commands
+   1. Download the windows build from gyan.dev [Link](https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z)
+   2. Extract the zip file.
+   3. Open bin folder in the extracted folder.
+   4. Copy the path of the bin folder.
+   5. Open Environment variables from system properties.
+   6. Select path under user variables.
+   7. Press Edit and then add new.
+   8. Paste the bin folder path in the end.
+   9. Save and apply
+6. Open conda prompt and enter the following commands
 
 ```bash
   pip install cmake
