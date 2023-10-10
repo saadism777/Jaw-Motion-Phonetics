@@ -24,8 +24,17 @@ The follwing step by steps procedure will aid in installation of the software. P
 1. Install Visual Studio Community Edition and Install Desktop C++ Desktop Environment (Including CMake)
 2. Download CMake. [Link](https://cmake.org/download/)
 3. Download Anaconda or Miniconda.
-
-4. Open conda prompt and enter the following commands
+4. Download ffmpeg from here extract it and add the path of the extracted folder to windows environment variable. [Link](https://ffmpeg.org/download.html)
+   1. Download the windows build from gyan.dev [Link](https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z)
+   2. Extract the zip file.
+   3. Open bin folder in the extracted folder.
+   4. Copy the path of the bin folder.
+   5. Open Environment variables from system properties.
+   6. Select path under user variables.
+   7. Press Edit and then add new.
+   8. Paste the bin folder path in the end.
+   9. Save and apply
+6. Open conda prompt and enter the following commands
 
 ```bash
   pip install cmake
@@ -34,15 +43,15 @@ The follwing step by steps procedure will aid in installation of the software. P
 ```bash
   pip install dlib
 ```
-5. Go to the project root folder and open a cmd prompt. Enter the following command to create a new virtual environment and activate it.
+6. Go to the project root folder and open a cmd prompt. Enter the following command to create a new virtual environment and activate it.
 ```bash
  python -m venv /path/virtual_environment 
 ```
-6. Install all the necessary requirements for the application using the requirements.txt file.
+7. Install all the necessary requirements for the application using the requirements.txt file.
 ```bash
  pip install requirements.txt 
 ```
-7. Navigate to the src directory and run the main.py file.
+8. Navigate to the src directory and run the main.py file.
 ```bash
  cd src 
 ```
