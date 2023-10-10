@@ -17,7 +17,6 @@ from moviepy.editor import VideoFileClip
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QDesktopWidget,
                              QHBoxLayout, QPushButton, QVBoxLayout, QWidget)
 from scipy import stats
-from scipy.io import wavfile
 
 # Initialize the webcam or video file path
 #path = '..\sample\sample_front.mp4' #video file path or 0 for webcam
@@ -251,6 +250,7 @@ if str(sys.argv[2]) is None:
     date_string = datetime.datetime.now().strftime("%d-%m-%Y_%I-%M%p")
 else:
     date_string = str(sys.argv[2])
+    date_string = date_string[:-3]
 timestamp_dir = os.path.join(output_dir, date_string)
 if not os.path.exists(timestamp_dir):
     os.makedirs(timestamp_dir)
@@ -463,7 +463,7 @@ while True:
             cv2.line(frame, (x1, y1), (x2, y2), (255, 255, 255), 2)
         
         # Get the forehead region based on landmarks
-        forehead_top = landmarks.part(21).y - 50  # Adjust the value as needed
+        forehead_top = landmarks.part(21).y - 70  # Adjust the value as needed
         forehead_bottom = landmarks.part(19).y  # Adjust the value as needed
         forehead_left = landmarks.part(19).x  # Adjust the value as needed
         forehead_right = landmarks.part(24).x  # Adjust the value as needed
