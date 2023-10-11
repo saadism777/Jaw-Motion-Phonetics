@@ -513,8 +513,8 @@ while True:
         points = []
         points.append((landmarks.part(19).x, landmarks.part(19).y))  # Adjust the point indices as needed
         points.append((landmarks.part(24).x, landmarks.part(19).y))  # Adjust the point indices as needed
-        points.append((landmarks.part(24).x, landmarks.part(21).y - 50))  # Adjust the point indices and the y-offset as needed
-        points.append((landmarks.part(19).x, landmarks.part(21).y - 50))  # Adjust the point indices and the y-offset as needed
+        points.append((landmarks.part(24).x, landmarks.part(21).y - 100))  # Adjust the point indices and the y-offset as needed
+        points.append((landmarks.part(19).x, landmarks.part(21).y - 100))  # Adjust the point indices and the y-offset as needed
             # Convert the list of points to a NumPy array
         points = np.array(points)
         
