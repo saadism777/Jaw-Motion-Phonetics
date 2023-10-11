@@ -19,6 +19,9 @@ Dental Loop SnP facilitates the extraction and analysis of audio data from video
 
 5. The dashboard, opened automatically, presents spectrograms, graphs, and correlation histograms side by side for selected phonetic types, providing an interactive platform for analyzing phonetics, jaw elevation, and speech patterns.
 
+## Input Files
+As [VideoFileClip](https://moviepy-tburrows13.readthedocs.io/en/improve-docs/ref/VideoClip/VideoFileClip.html) Library was used for Video to .wav conversion. It can have any extension supported by ffmpeg: .ogv, .mp4, .mpeg, .avi, .mov etc.
+
 ## Installation
 The follwing step by steps procedure will aid in installation of the software. Python version : 3.10.11
 1. Install Visual Studio Community Edition and Install Desktop C++ Desktop Environment (Including CMake)
