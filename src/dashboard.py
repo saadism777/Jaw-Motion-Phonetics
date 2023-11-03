@@ -103,7 +103,7 @@ def display_collage():
 
     # Convert the PIL image to a Tkinter PhotoImage
     photo = ImageTk.PhotoImage(collage)
-    vid_player.grid(row=10, column=10, columnspan=2, padx=10, pady=10)
+    #vid_player.grid(row=10, column=10, columnspan=2, padx=10, pady=10)
     # Update the image label
     image_label.configure(image=photo)
     image_label.image = photo
@@ -184,33 +184,33 @@ image_label.grid(row=4, column=0, padx=10, pady=10)
 
 
 # Video Player Code
-load_btn = tk.Button(right_frame, text="Load Video", command=load_video)
-load_btn.grid(row=0, column=0, padx=10, pady=10)
+# load_btn = tk.Button(right_frame, text="Load Video", command=load_video)
+# load_btn.grid(row=0, column=0, padx=10, pady=10)
 
-vid_player = TkinterVideo(scaled=True, master=right_frame, width=500)
-vid_player.grid(row=1, column=0, columnspan=2, padx=10, pady=10)  # Set columnspan to 2
+# vid_player = TkinterVideo(scaled=True, master=right_frame, width=500)
+# vid_player.grid(row=1, column=0, columnspan=2, padx=10, pady=10)  # Set columnspan to 2
 
-play_pause_btn = tk.Button(right_frame, text="Play", command=play_pause)
-play_pause_btn.grid(row=2, column=0, padx=10, pady=10)
+# play_pause_btn = tk.Button(right_frame, text="Play", command=play_pause)
+# play_pause_btn.grid(row=2, column=0, padx=10, pady=10)
 
-skip_minus_5sec = tk.Button(right_frame, text="Skip -5 sec", command=lambda: skip(-5))
-skip_minus_5sec.grid(row=2, column=1, padx=10, pady=10)
+# skip_minus_5sec = tk.Button(right_frame, text="Skip -5 sec", command=lambda: skip(-5))
+# skip_minus_5sec.grid(row=2, column=1, padx=10, pady=10)
 
-start_time = tk.Label(right_frame, text=str(datetime.timedelta(seconds=0)))
-start_time.grid(row=2, column=2, padx=10, pady=10)
+# start_time = tk.Label(right_frame, text=str(datetime.timedelta(seconds=0)))
+# start_time.grid(row=2, column=2, padx=10, pady=10)
 
-progress_value = tk.IntVar(right_frame)
+# progress_value = tk.IntVar(right_frame)
 
-progress_slider = tk.Scale(right_frame, variable=progress_value, from_=0, to=0, orient="horizontal", command=seek)
-progress_slider.grid(row=3, column=0, columnspan=3, padx=10, pady=10, sticky="ew")
+# progress_slider = tk.Scale(right_frame, variable=progress_value, from_=0, to=0, orient="horizontal", command=seek)
+# progress_slider.grid(row=3, column=0, columnspan=3, padx=10, pady=10, sticky="ew")
 
-end_time = tk.Label(right_frame, text=str(datetime.timedelta(seconds=0)))
-end_time.grid(row=2, column=3, padx=10, pady=10)
+# end_time = tk.Label(right_frame, text=str(datetime.timedelta(seconds=0)))
+# end_time.grid(row=2, column=3, padx=10, pady=10)
 
 # Bind the on_audio_seek function to the seek bar
 
-progress_slider.bind("<ButtonRelease-1>", on_seek)
-seek_bar.bind("<ButtonRelease-1>", on_seek)
+# progress_slider.bind("<ButtonRelease-1>", on_seek)
+# seek_bar.bind("<ButtonRelease-1>", on_seek)
 
 # Start the Tkinter main loop
 root.mainloop()
