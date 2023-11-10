@@ -1,3 +1,4 @@
+import csv
 import datetime
 import os
 import subprocess
@@ -43,9 +44,15 @@ def plot_time_vs_amplitude(audio_file, name):
     phonetic_output_dir = os.path.join(audio_output_dir, f'{name}')
     amplitude_output_file = os.path.join(phonetic_output_dir, f'{name}_time_vs_amplitude.png')
     histogram_output_file = os.path.join(phonetic_output_dir, f'{name}_histogram_of_amplitude.png')
+    csv_file = os.path.join(phonetic_output_dir, f'{name}_time_vs_amplitude.csv')
     audio, sr = librosa.load(audio_file)
     time = np.arange(0, len(audio)) / sr
-
+    data = list(zip(time, audio))
+    with open(csv_file, 'w', newline='') as csvfile:
+        csv_writer = csv.writer(csvfile)
+        # Write the header row if needed
+        csv_writer.writerow(["Time", "Amplitude"])
+        csv_writer.writerows(data)
     plt.figure(figsize=(10, 4))
     plt.plot(time, audio)
     plt.xlabel('Time (s)')
