@@ -66,4 +66,5 @@ The follwing step by steps procedure will aid in installation of the software. P
 
  - [Whisper](https://github.com/openai/whisper)
 
-
+## Publication
+[SoftwareX](https://www.sciencedirect.com/science/article/pii/S235271102300300X)
